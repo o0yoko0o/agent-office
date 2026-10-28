@@ -57,6 +57,16 @@
 **CI Pipeline:**
 - GitHub Actions workflows in `.github/workflows/ci.yml`, `release.yml`, `site.yml` and `windows.yml`
 
+## Environment Configuration
+
+**Development:**
+- Runtime configuration comes from CLI flags, `~/.agentoffice/` files and optional platform CLI logins.
+- Platform credentials remain in local login/configuration stores or environment variables; values are not documented here.
+
+**Production:**
+- The npm package runs on Node.js 18 or newer and uses the same local configuration model.
+- Remote targets add provider-specific CLI/API credentials and runtime prerequisites.
+
 ## Webhooks & Callbacks
 
 **Incoming:**

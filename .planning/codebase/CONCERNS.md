@@ -71,6 +71,13 @@
 - Impact: local interactive control may be unavailable or differ by OS.
 - Migration plan: keep the injected PTY boundary and provide a tested fallback/upgrade path before changing versions.
 
+## Missing Critical Features
+
+**Live end-to-end integration coverage:**
+- Missing: repeatable live checks for remote providers, boat environments and browser control journeys.
+- Why it matters: fake-backed tests cannot detect provider login, CLI, network or browser integration regressions.
+- Suggested next step: add opt-in environment-backed smoke checks without placing credentials in the repository.
+
 ## Test Coverage Gaps
 
 **Live integrations and browser flows:**
