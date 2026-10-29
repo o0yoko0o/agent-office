@@ -328,8 +328,9 @@ npx theagentoffice <command> [options]    # install | uninstall | doctor | mcp |
 | `--verbose` | log what the watchers are doing |
 | `--no-cloud`, `--local-only` | no sandbox auto-detect; this machine only |
 | `--no-control` | watch-only: no hiring or driving agents from the page |
+| `--no-presence` | don't scan processes: agents walk in with their first transcript line and leave on the quiet timers |
 
-`AGENT_OFFICE_HOME` moves `~/.agentoffice`, `AGENT_OFFICE_<AGENT>_DIR` points one agent at a non-default folder, and `AGENT_OFFICE_PTY` (`node-pty`, `python` or `none`) forces a terminal backend, for troubleshooting.
+`AGENT_OFFICE_HOME` moves `~/.agentoffice`, `AGENT_OFFICE_<AGENT>_DIR` points one agent at a non-default folder, `AGENT_OFFICE_PTY` (`node-pty`, `python` or `none`) forces a terminal backend, for troubleshooting, and `AGENT_OFFICE_PRESENCE=0` does what `--no-presence` does.
 
 | key | |
 | --- | --- |
@@ -345,6 +346,30 @@ npx theagentoffice <command> [options]    # install | uninstall | doctor | mcp |
 | <kbd>?</kbd> | every shortcut |
 
 Click a worker for its inspector: model, host, tool calls, tokens, recent actions. Scroll to zoom, drag to pan, double-click to reset.
+
+## Docker (this fork)
+
+This fork can run the office in Docker on the same machine as your agents. It reads their transcripts through read-only mounts and doesn't change any agent's setup.
+
+```sh
+make            # list the targets
+make up         # build if needed, start, print the URL (http://127.0.0.1:4848)
+make logs       # follow the office's output
+make down       # stop it
+make test       # typecheck and test run in a Node container, nothing gets installed on the host
+```
+
+`make up` copies `.env.dist` to `.env` on first use (`HOST_PORT`, `BIND_IP`, optional `AGENT_OFFICE_<AGENT>_DIR`) and runs `scripts/docker/mounts.sh`. That script writes `compose.mounts.yaml` with one read-only mount for each agent folder that exists on this machine, at the same path as on the host. The container gets your `HOME`, so paths still show up as `~`. The office keeps its own `office.json` inside the container, and your `~/.agentoffice/outbox` is mounted read-only so `office_status`, `office_shout`, `office_celebrate` and `office_flip` still reach it. Port 4848 leaves 4747 free for an office started on the host.
+
+What doesn't work in Docker:
+
+- `office_peers` can't find the office in the container, so agents don't see what the others are working on. The other four office tools work.
+- The container can't see your agents' processes and runs with `--no-presence`. Agents walk in with their first transcript line instead of at launch, and an agent that quit can stay at its desk for up to 20 minutes.
+- No control plane: no hiring, no terminal, no approvals from the page.
+- No remotes (ssh, Daytona, Vercel, Railway, boat).
+- If `~/.agentoffice/outbox` doesn't exist yet when you run `make up`, it isn't mounted. Run `make up` again once an agent has used an office tool. The same goes for agent folders created later.
+- On macOS the office polls the mounted folders every 1.5 seconds, which costs a little CPU.
+- Inside the container the office listens on `HOST_PORT` as well, so the banner shows the right port. It still warns about `0.0.0.0`, but the port is only published on `BIND_IP`.
 
 ## Contributing
 

@@ -4,3 +4,5 @@ dist
 *.log
 site/dist
 .wrangler
+.env
+compose.mounts.yaml

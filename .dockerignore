@@ -1,0 +1,10 @@
+node_modules
+dist
+site/dist
+video
+.planning
+.git
+.env
+compose.mounts.yaml
+*.log
+.DS_Store

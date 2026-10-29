@@ -1,0 +1,47 @@
+# agent-office in Docker. Use the Makefile (`make help`): it generates
+# compose.mounts.yaml (the read-only agent folders that exist on this machine)
+# and passes both files to docker compose.
+#
+# HOME is the host's, and every folder is mounted at the same path, so the
+# office shows the home folder as "~" and never sends full paths to the page.
+name: agent-office
+
+services:
+  office:
+    build: .
+    image: agent-office:local
+    init: true
+    restart: unless-stopped
+    # The office listens on HOST_PORT inside the container too, so the banner
+    # and the office.json it writes show the URL that works on the host.
+    command: ["node", "dist/cli.js", "--host", "0.0.0.0", "--port", "${HOST_PORT:-4848}", "--no-open", "--no-control", "--local-only", "--no-presence"]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${HOST_PORT:-4848}:${HOST_PORT:-4848}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:${HOST_PORT:-4848}/api/snapshot').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+    environment:
+      HOME: ${HOME}
+      # The host's time zone (the Makefile reads it), so times in the log and
+      # on the page match the clock.
+      TZ: ${TZ:-UTC}
+
+  # Toolbox for `make typecheck` and `make test`: the repo mounted at /app,
+  # node_modules in a volume, so nothing gets installed on the host. Runs as
+  # "node", not root: some tests rely on unreadable files staying unreadable.
+  dev:
+    build:
+      dockerfile_inline: |
+        FROM node:24-bookworm
+        RUN install -d -o node -g node /app/node_modules /home/node/.npm
+    image: agent-office-dev:local
+    profiles: ["tools"]
+    user: node
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - npm_cache:/home/node/.npm
+
+volumes:
+  node_modules:
+  npm_cache:
