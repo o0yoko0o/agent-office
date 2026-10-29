@@ -9,6 +9,9 @@
  * a one-time link, and hiring from the page works. `--service` is how the
  * background service starts it: login environment first, no browser, a log
  * file instead of the terminal.
+ *
+ * `--no-presence` (or AGENT_OFFICE_PRESENCE=0) skips the process scan, for an
+ * office that can't see the agents' processes (the Docker setup in this repo).
  */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -30,7 +33,7 @@ import { createPlaces } from "./control/cloud/index.ts";
 import { loadPty } from "./control/pty.ts";
 import { adoptLoginEnv } from "./control/env.ts";
 import { createLinker, createOfficePort } from "./control/link.ts";
-import { claudeSessionOf, startPresence } from "./control/presence.ts";
+import { claudeSessionOf, presenceOffByEnv, startPresence } from "./control/presence.ts";
 import { createInstallApi } from "./control/install-api.ts";
 import { appCurrent, installService, serviceLogger, serviceStatus, setStartAtLogin, startService } from "./control/service.ts";
 import { canOpenBrowser, loginPath, openBrowser, serviceDeps, waitForOffice } from "./control/cli.ts";
@@ -79,6 +82,8 @@ interface Options {
   control: boolean;
   /** Started by the background service (launchd / systemd): help-hidden. */
   service: boolean;
+  /** Scan the process table so agents walk in at launch (--no-presence / AGENT_OFFICE_PRESENCE=0 turn it off). */
+  presence: boolean;
 }
 
 class UsageError extends Error {}
@@ -100,6 +105,7 @@ function parseArgs(argv: string[]): Options {
     localOnly: false,
     control: true,
     service: false,
+    presence: !presenceOffByEnv(process.env),
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -195,6 +201,9 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--no-control":
         o.control = false;
+        break;
+      case "--no-presence":
+        o.presence = false;
         break;
       case "--service":
         o.service = true;
@@ -403,6 +412,7 @@ ${bold("Remotes")}  agents in sandboxes and on other machines, in the same offic
   --no-cloud        Don't auto-detect sandbox platforms you're logged in to
   --local-only      Only this machine (ignores the flags above and config.json)
   --no-control      Watch-only: no hiring or driving agents from the page
+  --no-presence     Don't scan processes: agents walk in with their first transcript line, leave on timers
   Without flags, platforms you're logged in to are watched in your own scope only: Daytona's
   personal organization, Railway's linked project, the office's own project and sandboxes, the sandboxes your railway CLI made,
   Vercel's default team. Nothing is installed on a remote: the office only reads transcripts
@@ -421,6 +431,7 @@ ${bold("Commands")}
 
 ${bold("Environment")}
   AGENT_OFFICE_HOME   Where office.json and agent signals live (default ~/.agentoffice)
+  AGENT_OFFICE_PRESENCE=0  Same as --no-presence
   CLAUDE_CONFIG_DIR, CODEX_HOME and AGENT_OFFICE_<AGENT>_DIR point at non-default transcript folders
 `;
 }
@@ -571,7 +582,7 @@ async function main(): Promise<void> {
   if (remotes) await remotes.ready;
   state.tick();
   // Agents started in a terminal walk in at launch and leave when they quit (src/control/presence.ts).
-  const presence = o.demo || !linker
+  const presence = o.demo || !linker || !o.presence
     ? undefined
     : startPresence({
         state,

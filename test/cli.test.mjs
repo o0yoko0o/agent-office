@@ -35,7 +35,7 @@ test("--help documents every command and flag", { skip: !built && "dist/cli.js n
   for (const word of [
     "office", "install", "uninstall", "doctor", "mcp",
     "--demo", "--port", "--host", "--no-open", "--agents", "--seed",
-    "--ssh", "--daytona", "--boat", "--railway", "--vercel", "--no-cloud", "--local-only",
+    "--ssh", "--daytona", "--boat", "--railway", "--vercel", "--no-cloud", "--local-only", "--no-presence", "AGENT_OFFICE_PRESENCE",
     "claude", "commandcode", "codex", "opencode", "droid", "gemini", "qwen", "cursor",
   ]) assert.ok(r.stdout.includes(word), `help mentions ${word}`);
 });
@@ -46,6 +46,8 @@ test("bad flags exit 2 with a one-line error", { skip: !built && "dist/cli.js no
   assert.match(r.stderr, /unknown agent "aider"/);
   const ok = spawnSync(process.execPath, [CLI, "office", "--version"], { encoding: "utf8", env: env(tmpdir()) });
   assert.equal(ok.status, 0, "`office` is accepted as the explicit default command");
+  const np = spawnSync(process.execPath, [CLI, "--no-presence", "--version"], { encoding: "utf8", env: env(tmpdir()) });
+  assert.equal(np.status, 0, "--no-presence is a known flag");
 });
 
 test("the office advertises itself in office.json and removes it on exit", { skip: !built && "dist/cli.js not built", timeout: 20_000 }, async () => {

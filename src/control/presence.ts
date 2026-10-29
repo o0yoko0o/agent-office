@@ -27,6 +27,12 @@
  * left to OfficeState.reconcileLocal, which this also feeds: per agent and
  * folder, keep as many unlinked sessions as there are untracked processes
  * (an npm launcher and the native binary it runs count once).
+ *
+ * `--no-presence` (or AGENT_OFFICE_PRESENCE=0) skips all of this: no scan and
+ * no reconcileLocal, so sessions come and go on the transcript timers alone.
+ * That is for an office that can't see the agents' processes, e.g. one in a
+ * container watching the host's transcripts, where an empty process table
+ * would send every session home after PRESENCE_QUIET_MS.
  */
 import { ACTIVE_WINDOW_MS, type AgentKind, type RawEvent } from "../shared/events.ts";
 import { readFileSync, statSync } from "node:fs";
@@ -106,6 +112,11 @@ export function claudeSessionOf(configDir: string, pid: number, startedAt: numbe
   } catch {
     return undefined;
   }
+}
+
+/** AGENT_OFFICE_PRESENCE=0 (also false, off, no) turns the process scan off, like --no-presence. */
+export function presenceOffByEnv(env: Record<string, string | undefined>): boolean {
+  return ["0", "false", "off", "no"].includes(env.AGENT_OFFICE_PRESENCE?.trim().toLowerCase() ?? "");
 }
 
 export function startPresence(o: PresenceOptions): Presence {
